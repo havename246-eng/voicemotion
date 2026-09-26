@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voice Upload</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f6f5f2;
+      --card: #ffffff;
+      --text: #1d1b19;
+      --muted: #6f6a64;
+      --border: #e6e2dc;
+      --accent: #e0533d;
+      --accent-soft: #fbe6e2;
+      --wave: #1d1b19;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #161514;
+        --card: #211f1d;
+        --text: #f1eee9;
+        --muted: #a39d95;
+        --border: #34312d;
+        --accent: #ff6b52;
+        --accent-soft: #3a2320;
+        --wave: #f1eee9;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Inter", system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    main { max-width: 640px; margin: 0 auto; padding: 48px 16px 64px; }
+    header h1 { font-size: 2rem; margin: 0 0 4px; letter-spacing: -0.02em; }
+    header p { margin: 0 0 32px; color: var(--muted); }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+    }
+    .recorder { text-align: center; }
+    canvas { width: 100%; height: 90px; display: block; margin-bottom: 16px; }
+    .timer { font-variant-numeric: tabular-nums; font-size: 1.5rem; font-weight: 600; margin-bottom: 20px; }
+    .rec-btn {
+      width: 84px; height: 84px; border-radius: 50%;
+      border: 4px solid var(--accent-soft);
+      background: var(--accent); cursor: pointer;
+      display: inline-grid; place-items: center;
+      transition: transform .15s ease;
+    }
+    .rec-btn:hover { transform: scale(1.05); }
+    .rec-btn span { width: 28px; height: 28px; border-radius: 50%; background: #fff; transition: all .2s ease; }
+    .rec-btn.recording span { border-radius: 6px; width: 26px; height: 26px; }
+    .rec-btn.recording { animation: pulse 1.4s infinite; }
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
+      100% { box-shadow: 0 0 0 22px transparent; }
+    }
+    .hint { color: var(--muted); font-size: .9rem; margin-top: 12px; }
+    .or { margin: 20px 0 0; color: var(--muted); font-size: .9rem; }
+    .upload-label {
+      display: inline-block; margin-top: 8px; padding: 8px 16px;
+      border: 1px dashed var(--border); border-radius: 999px;
+      cursor: pointer; font-weight: 500; font-size: .95rem;
+    }
+    .upload-label:hover { border-color: var(--accent); color: var(--accent); }
+    .upload-label input { display: none; }
+    .error { color: var(--accent); font-size: .9rem; margin-top: 12px; }
+
+    h2 { font-size: 1.1rem; margin: 40px 0 12px; }
+    .empty { color: var(--muted); text-align: center; padding: 24px; }
+    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
+    li.item { padding: 16px 18px; }
+    .row { display: flex; align-items: center; gap: 8px; }
+    .name {
+      flex: 1; min-width: 0; font-weight: 600; font-size: 1rem;
+      background: transparent; border: 1px solid transparent; border-radius: 8px;
+      color: var(--text); padding: 4px 6px; font-family: inherit;
+    }
+    .name:hover, .name:focus { border-color: var(--border); outline: none; }
+    .meta { color: var(--muted); font-size: .85rem; margin: 2px 0 10px 7px; }
+    audio { width: 100%; }
+    .icon-btn {
+      border: 1px solid var(--border); background: transparent; color: var(--text);
+      border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: .85rem; font-family: inherit;
+      text-decoration: none;
+    }
+    .icon-btn:hover { border-color: var(--text); }
+    .icon-btn.danger:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Voice Upload</h1>
+      <p>Record your voice or upload an audio file. Recordings are saved in this browser.</p>
+    </header>
+
+    <section class="card recorder">
+      <canvas id="wave"></canvas>
+      <div class="timer" id="timer">00:00</div>
+      <button class="rec-btn" id="recBtn" aria-label="Start recording"><span></span></button>
+      <div class="hint" id="hint">Tap to start recording</div>
+      <p class="or">or</p>
+      <label class="upload-label">
+        Upload audio file
+        <input type="file" id="fileInput" accept="audio/*" multiple />
+      </label>
+      <div class="error" id="error" hidden></div>
+    </section>
+
+    <h2>Your recordings</h2>
+    <ul id="list"></ul>
+    <div class="empty card" id="empty">No recordings yet.</div>
+  </main>
+
+  <script>
+    const recBtn = document.getElementById("recBtn");
+    const hint = document.getElementById("hint");
+    const timerEl = document.getElementById("timer");
+    const errorEl = document.getElementById("error");
+    const listEl = document.getElementById("list");
+    const emptyEl = document.getElementById("empty");
+    const canvas = document.getElementById("wave");
+    const ctx = canvas.getContext("2d");
+
+    let recorder, stream, audioCtx, analyser, chunks = [], startTime, tick, rafId;
+
+    // ---------- Storage (IndexedDB, so recordings survive a page refresh) ----------
+    let db = null;
+    function openDb() {
+      return new Promise((resolve) => {
+        try {
+          const req = indexedDB.open("voice-upload", 1);
+          req.onupgradeneeded = () => req.result.createObjectStore("clips", { keyPath: "id" });
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch { resolve(null); }
+      });
+    }
+    function store(mode) { return db.transaction("clips", mode).objectStore("clips"); }
+    function saveClip(clip) { try { db && store("readwrite").put(clip); } catch {} }
+    function deleteClip(id) { try { db && store("readwrite").delete(id); } catch {} }
+    function loadClips() {
+      return new Promise((resolve) => {
+        if (!db) return resolve([]);
+        try {
+          const req = store("readonly").getAll();
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve([]);
+        } catch { resolve([]); }
+      });
+    }
+
+    // ---------- Recording ----------
+    function pickMimeType() {
+      const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
+      return types.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+    }
+
+    async function startRecording() {
+      errorEl.hidden = true;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        showError("Microphone access was blocked. Allow the microphone in your browser settings and try again.");
+        return;
+      }
+      const mimeType = pickMimeType();
+      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunks = [];
+      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+      recorder.onstop = onRecordingDone;
+      recorder.start();
+
+      audioCtx = new AudioContext();
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 1024;
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
+      drawWave();
+
+      startTime = Date.now();
+      tick = setInterval(() => (timerEl.textContent = fmt((Date.now() - startTime) / 1000)), 250);
+      recBtn.classList.add("recording");
+      recBtn.setAttribute("aria-label", "Stop recording");
+      hint.textContent = "Recording… tap to stop";
+    }
+
+    function stopRecording() {
+      recorder.stop();
+      stream.getTracks().forEach((t) => t.stop());
+      clearInterval(tick);
+      cancelAnimationFrame(rafId);
+      audioCtx && audioCtx.close();
+      recBtn.classList.remove("recording");
+      recBtn.setAttribute("aria-label", "Start recording");
+      hint.textContent = "Tap to start recording";
+      drawIdle();
+    }
+
+    function onRecordingDone() {
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      const duration = (Date.now() - startTime) / 1000;
+      timerEl.textContent = "00:00";
+      addClip({ blob, name: "Recording " + new Date().toLocaleString(), duration });
+    }
+
+    recBtn.addEventListener("click", () => {
+      recorder && recorder.state === "recording" ? stopRecording() : startRecording();
+    });
+
+    // ---------- File upload ----------
+    document.getElementById("fileInput").addEventListener("change", (e) => {
+      [...e.target.files].forEach((file) => {
+        if (!file.type.startsWith("audio/")) return showError(file.name + " is not an audio file.");
+        addClip({ blob: file, name: file.name.replace(/\.[^.]+$/, ""), duration: null });
+      });
+      e.target.value = "";
+    });
+
+    // ---------- List ----------
+    function addClip({ blob, name, duration }) {
+      const clip = { id: crypto.randomUUID(), name, blob, type: blob.type, duration, createdAt: Date.now() };
+      saveClip(clip);
+      renderClip(clip, true);
+    }
+
+    function renderClip(clip, prepend) {
+      const url = URL.createObjectURL(clip.blob);
+      const ext = (clip.type.split("/")[1] || "webm").split(";")[0];
+      const li = document.createElement("li");
+      li.className = "card item";
+      li.innerHTML = `
+        <div class="row">
+          <input class="name" aria-label="Recording name" />
+          <a class="icon-btn" download>Download</a>
+          <button class="icon-btn danger">Delete</button>
+        </div>
+        <div class="meta"></div>
+        <audio controls preload="metadata"></audio>`;
+      const nameInput = li.querySelector(".name");
+      nameInput.value = clip.name;
+      nameInput.addEventListener("change", () => {
+        clip.name = nameInput.value.trim() || "Untitled";
+        nameInput.value = clip.name;
+        link.download = clip.name + "." + ext;
+        saveClip(clip);
+      });
+      const link = li.querySelector("a");
+      link.href = url;
+      link.download = clip.name + "." + ext;
+      const audio = li.querySelector("audio");
+      audio.src = url;
+      const meta = li.querySelector(".meta");
+      const setMeta = (d) =>
+        (meta.textContent = new Date(clip.createdAt).toLocaleString() + (d ? " · " + fmt(d) : ""));
+      setMeta(clip.duration);
+      audio.addEventListener("loadedmetadata", () => isFinite(audio.duration) && setMeta(audio.duration));
+      li.querySelector(".danger").addEventListener("click", () => {
+        if (!confirm(`Delete "${clip.name}"?`)) return;
+        deleteClip(clip.id);
+        URL.revokeObjectURL(url);
+        li.remove();
+        updateEmpty();
+      });
+      prepend ? listEl.prepend(li) : listEl.append(li);
+      updateEmpty();
+    }
+
+    function updateEmpty() { emptyEl.hidden = listEl.children.length > 0; }
+
+    // ---------- Helpers ----------
+    function fmt(sec) {
+      sec = Math.round(sec);
+      return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
+    }
+    function showError(msg) { errorEl.textContent = msg; errorEl.hidden = false; }
+
+    function sizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = canvas.clientWidth * dpr;
+      canvas.height = canvas.clientHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    function waveColor() { return getComputedStyle(document.documentElement).getPropertyValue("--wave"); }
+
+    function drawIdle() {
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = waveColor();
+      ctx.globalAlpha = 0.25;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function drawWave() {
+      const data = new Uint8Array(analyser.frequencyBinCount);
+      const w = canvas.clientWidth, h = canvas.clientHeight;
+      const bars = 48, gap = 3, bw = (w - gap * (bars - 1)) / bars;
+      (function frame() {
+        analyser.getByteTimeDomainData(data);
+        ctx.clearRect(0, 0, w, h);
+        ctx.fillStyle = waveColor();
+        const step = Math.floor(data.length / bars);
+        for (let i = 0; i < bars; i++) {
+          let peak = 0;
+          for (let j = 0; j < step; j++) peak = Math.max(peak, Math.abs(data[i * step + j] - 128));
+          const bh = Math.max(3, (peak / 128) * h * 1.6);
+          ctx.fillRect(i * (bw + gap), (h - bh) / 2, bw, Math.min(bh, h));
+        }
+        rafId = requestAnimationFrame(frame);
+      })();
+    }
+
+    // ---------- Start ----------
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      showError("Your browser doesn't support recording. You can still upload audio files.");
+      recBtn.disabled = true;
+    }
+    sizeCanvas();
+    drawIdle();
+    window.addEventListener("resize", () => { sizeCanvas(); if (!recorder || recorder.state !== "recording") drawIdle(); });
+
+    openDb().then(async (d) => {
+      db = d;
+      const clips = await loadClips();
+      clips.sort((a, b) => b.createdAt - a.createdAt).forEach((c) => renderClip(c, false));
+      updateEmpty();
+    });
+  </script>
+</body>
+</html>
