@@ -2,344 +2,1066 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Voice Upload</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="description" content="Record or upload your voice and watch it move a living gradient. Export it as an MP4." />
+  <title>VoiceMotion</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Sharp:opsz,wght,FILL,GRAD@24,500,0..1,0&icon_names=check_box,check_box_outline_blank,download,mic,pause,play_arrow,stop,upload&display=block" rel="stylesheet" />
   <style>
     :root {
-      --bg: #f6f5f2;
-      --card: #ffffff;
-      --text: #1d1b19;
-      --muted: #6f6a64;
-      --border: #e6e2dc;
-      --accent: #e0533d;
-      --accent-soft: #fbe6e2;
-      --wave: #1d1b19;
+      --s: 40px;
+      --m: 56px;
+      --l: 72px;
+      --xl: 96px;
+      --white: #ffffff;
+      --black: #000000;
+      --ease: cubic-bezier(.2, .8, .2, 1);
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #161514;
-        --card: #211f1d;
-        --text: #f1eee9;
-        --muted: #a39d95;
-        --border: #34312d;
-        --accent: #ff6b52;
-        --accent-soft: #3a2320;
-        --wave: #f1eee9;
-      }
+    @media (max-height: 640px) {
+      :root { --m: 48px; --l: 60px; --xl: 80px; --s: 36px; }
     }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font-family: "Inter", system-ui, sans-serif;
-      line-height: 1.5;
+    @media (max-height: 500px) {
+      :root { --m: 42px; --l: 52px; --xl: 68px; --s: 34px; }
     }
-    main { max-width: 640px; margin: 0 auto; padding: 48px 16px 64px; }
-    header h1 { font-size: 2rem; margin: 0 0 4px; letter-spacing: -0.02em; }
-    header p { margin: 0 0 32px; color: var(--muted); }
 
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 28px;
+    * { box-sizing: border-box; margin: 0; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--black);
+      color: var(--white);
+      font-family: "Inter", system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
     }
-    .recorder { text-align: center; }
-    canvas { width: 100%; height: 90px; display: block; margin-bottom: 16px; }
-    .timer { font-variant-numeric: tabular-nums; font-size: 1.5rem; font-weight: 600; margin-bottom: 20px; }
-    .rec-btn {
-      width: 84px; height: 84px; border-radius: 50%;
-      border: 4px solid var(--accent-soft);
-      background: var(--accent); cursor: pointer;
-      display: inline-grid; place-items: center;
-      transition: transform .15s ease;
+
+    #bg {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: block;
     }
-    .rec-btn:hover { transform: scale(1.05); }
-    .rec-btn span { width: 28px; height: 28px; border-radius: 50%; background: #fff; transition: all .2s ease; }
-    .rec-btn.recording span { border-radius: 6px; width: 26px; height: 26px; }
-    .rec-btn.recording { animation: pulse 1.4s infinite; }
+
+    .app {
+      position: relative;
+      z-index: 1;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(12px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+    }
+
+    nav {
+      flex: none;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .wordmark {
+      font-size: 1.125rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .stage {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: clamp(18px, 5vh, 48px);
+    }
+
+    /* ---------- Circular buttons ---------- */
+    .btn {
+      flex: none;
+      display: inline-grid;
+      place-items: center;
+      padding: 0;
+      border: 0;
+      border-radius: 50%;
+      background: var(--white);
+      color: var(--black);
+      font: 600 0.8rem/1 "Inter", system-ui, sans-serif;
+      cursor: pointer;
+      transition: transform .18s var(--ease), opacity .2s, box-shadow .2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn:hover { transform: scale(1.05); }
+    .btn:active { transform: scale(0.95); }
+    .btn:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
+    .btn:disabled { opacity: .35; cursor: default; transform: none; }
+    /* Material Symbols Sharp */
+    .icon {
+      display: block;
+      font-family: "Material Symbols Sharp";
+      font-weight: normal;
+      font-style: normal;
+      line-height: 1;
+      letter-spacing: normal;
+      white-space: nowrap;
+      font-feature-settings: "liga";
+      font-variation-settings: "FILL" 0, "wght" 500, "GRAD" 0, "opsz" 24;
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+    .icon.fill { font-variation-settings: "FILL" 1, "wght" 500, "GRAD" 0, "opsz" 24; }
+    .s .icon { font-size: calc(var(--s) * .55); }
+    .m .icon { font-size: calc(var(--m) * .46); }
+    .xl .icon { font-size: calc(var(--xl) * .4); }
+    .s { width: var(--s); height: var(--s); }
+    .m { width: var(--m); height: var(--m); }
+    .l { width: var(--l); height: var(--l); }
+    .xl { width: var(--xl); height: var(--xl); }
+
+    /* ---------- Mic ---------- */
+    .mic-block { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .mic-wrap {
+      position: relative;
+      width: var(--xl);
+      height: var(--xl);
+      display: grid;
+      place-items: center;
+    }
+    #ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 240%;
+      height: 240%;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .pulse {
+      position: absolute;
+      inset: 0;
+      border-radius: 50%;
+      border: 2px solid rgba(255, 255, 255, .75);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .recording .pulse { animation: pulse 1.8s ease-out infinite; }
+    .recording .pulse.p2 { animation-delay: .9s; }
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 45%, transparent); }
-      100% { box-shadow: 0 0 0 22px transparent; }
+      from { transform: scale(1); opacity: .7; }
+      to { transform: scale(1.8); opacity: 0; }
     }
-    .hint { color: var(--muted); font-size: .9rem; margin-top: 12px; }
-    .or { margin: 20px 0 0; color: var(--muted); font-size: .9rem; }
-    .upload-label {
-      display: inline-block; margin-top: 8px; padding: 8px 16px;
-      border: 1px dashed var(--border); border-radius: 999px;
-      cursor: pointer; font-weight: 500; font-size: .95rem;
-    }
-    .upload-label:hover { border-color: var(--accent); color: var(--accent); }
-    .upload-label input { display: none; }
-    .error { color: var(--accent); font-size: .9rem; margin-top: 12px; }
+    #micBtn { position: relative; z-index: 1; }
+    #micBtn .i-stop { display: none; }
+    .recording #micBtn .i-mic { display: none; }
+    .recording #micBtn .i-stop { display: block; }
 
-    h2 { font-size: 1.1rem; margin: 40px 0 12px; }
-    .empty { color: var(--muted); text-align: center; padding: 24px; }
-    ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 12px; }
-    li.item { padding: 16px 18px; }
-    .row { display: flex; align-items: center; gap: 8px; }
-    .name {
-      flex: 1; min-width: 0; font-weight: 600; font-size: 1rem;
-      background: transparent; border: 1px solid transparent; border-radius: 8px;
-      color: var(--text); padding: 4px 6px; font-family: inherit;
+    .timer {
+      height: 1.25em;
+      font-size: .95rem;
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: .01em;
+      opacity: .9;
     }
-    .name:hover, .name:focus { border-color: var(--border); outline: none; }
-    .meta { color: var(--muted); font-size: .85rem; margin: 2px 0 10px 7px; }
-    audio { width: 100%; }
-    .icon-btn {
-      border: 1px solid var(--border); background: transparent; color: var(--text);
-      border-radius: 10px; padding: 6px 10px; cursor: pointer; font-size: .85rem; font-family: inherit;
-      text-decoration: none;
+
+    /* ---------- Pill buttons ---------- */
+    .pill {
+      position: relative;
+      overflow: hidden;
+      flex: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: var(--m);
+      padding: 0 24px 0 20px;
+      border: 0;
+      border-radius: 999px;
+      background: var(--white);
+      color: var(--black);
+      font: 600 .95rem/1 "Inter", system-ui, sans-serif;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform .18s var(--ease), opacity .2s, background-color .2s, color .2s;
+      -webkit-tap-highlight-color: transparent;
     }
-    .icon-btn:hover { border-color: var(--text); }
-    .icon-btn.danger:hover { border-color: var(--accent); color: var(--accent); }
+    .pill .icon { font-size: 22px; }
+    .pill:hover { transform: scale(1.04); }
+    .pill:active { transform: scale(0.96); }
+    .pill:focus-visible { outline: 2px solid var(--white); outline-offset: 4px; }
+    .pill:disabled { opacity: .35; cursor: default; transform: none; }
+    .pill.compact { height: 46px; padding: 0 18px 0 14px; gap: 6px; font-size: .875rem; }
+    .pill.compact .icon { font-size: 20px; }
+
+    /* ---------- Upload ---------- */
+    /* Damped bounce: lift, drop, then smaller rebounds that settle */
+    .upload.nudge { animation: nudge 1.4s cubic-bezier(.37, 0, .63, 1) 1; }
+    @keyframes nudge {
+      0%   { transform: translateY(0) scale(1); }
+      18%  { transform: translateY(-14px) scale(1.06); }
+      36%  { transform: translateY(0) scale(1.02, .97); }
+      50%  { transform: translateY(-7px) scale(1.03); }
+      64%  { transform: translateY(0) scale(1.01, .99); }
+      76%  { transform: translateY(-3px) scale(1.01); }
+      88%  { transform: translateY(0) scale(1); }
+      100% { transform: translateY(0) scale(1); }
+    }
+
+    /* ---------- Message ---------- */
+    .msg {
+      max-width: 360px;
+      padding: 10px 16px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, .55);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      font-size: .875rem;
+      line-height: 1.45;
+      text-align: center;
+    }
+    .msg[hidden] { display: none; }
+
+    /* ---------- Export panel ---------- */
+    .export {
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      transition: opacity .35s var(--ease), transform .35s var(--ease);
+    }
+    .export[hidden] { display: none; }
+    .export.enter { opacity: 0; transform: translateY(12px); }
+    .row { display: flex; align-items: flex-start; justify-content: center; gap: 12px; }
+    .row[role="radiogroup"] { margin-bottom: 8px; }
+    .chip { opacity: .55; }
+    .chip[aria-checked="true"] { opacity: 1; box-shadow: 0 0 0 3px rgba(255, 255, 255, .35); }
+    .caption { font-size: .8rem; opacity: .75; height: 1.2em; }
+    .row.actions { flex-wrap: wrap; align-items: center; gap: 10px; }
+    .pill > span { position: relative; }
+
+    #wmBtn .i-off { display: none; }
+    #wmBtn[aria-pressed="false"] { background: rgba(255, 255, 255, .14); color: var(--white); box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .6); }
+    #wmBtn[aria-pressed="false"] .i-on { display: none; }
+    #wmBtn[aria-pressed="false"] .i-off { display: block; }
+
+    /* Export progress fills the pill from the left */
+    #exportBtn .bar {
+      position: absolute;
+      inset: 0;
+      width: calc(var(--p, 0) * 1%);
+      background: rgba(0, 0, 0, .14);
+      opacity: 0;
+      transition: width .2s linear, opacity .2s;
+    }
+    .exporting #exportBtn .bar { opacity: 1; }
+    .exporting #exportBtn:disabled { opacity: 1; }
+    #exportBtn .pct { display: none; font-variant-numeric: tabular-nums; }
+    .exporting #exportBtn .pct { display: inline; }
+    .exporting #exportBtn .label { display: none; }
+
+    #playBtn .i-pause, #playBtn .t-pause { display: none; }
+    .playing #playBtn .i-pause { display: block; }
+    .playing #playBtn .t-pause { display: inline; }
+    .playing #playBtn .i-play, .playing #playBtn .t-play { display: none; }
+    .status { font-size: .8rem; opacity: .8; min-height: 1.2em; text-align: center; }
+
+    @media (max-height: 560px) {
+      .caption { display: none; }
+      .export { gap: 8px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .recording .pulse { animation: none; opacity: .5; }
+      .upload.nudge { animation: none; }
+      .btn, .pill, .export, #exportBtn .bar { transition: none; }
+    }
   </style>
 </head>
 <body>
-  <main>
-    <header>
-      <h1>Voice Upload</h1>
-      <p>Record your voice or upload an audio file. Recordings are saved in this browser.</p>
-    </header>
+  <canvas id="bg" aria-hidden="true"></canvas>
 
-    <section class="card recorder">
-      <canvas id="wave"></canvas>
-      <div class="timer" id="timer">00:00</div>
-      <button class="rec-btn" id="recBtn" aria-label="Start recording"><span></span></button>
-      <div class="hint" id="hint">Tap to start recording</div>
-      <p class="or">or</p>
-      <label class="upload-label">
-        Upload audio file
-        <input type="file" id="fileInput" accept="audio/*" multiple />
-      </label>
-      <div class="error" id="error" hidden></div>
+  <div class="app" id="app">
+    <nav><span class="wordmark">VoiceMotion</span></nav>
+
+    <main class="stage">
+      <div class="mic-block">
+        <div class="mic-wrap">
+          <canvas id="ring" aria-hidden="true"></canvas>
+          <span class="pulse"></span>
+          <span class="pulse p2"></span>
+          <button class="btn xl" id="micBtn" aria-label="Start recording">
+            <span class="icon fill i-mic" aria-hidden="true">mic</span>
+            <span class="icon fill i-stop" aria-hidden="true">stop</span>
+          </button>
+        </div>
+        <div class="timer" id="timer" aria-live="off"></div>
+      </div>
+
+      <button class="pill upload" id="uploadBtn" type="button">
+        <span class="icon" aria-hidden="true">upload</span>
+        Upload your Voice
+      </button>
+      <input type="file" id="fileInput" accept=".mp3,.wav,.m4a,.webm,audio/mpeg,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a,audio/webm" hidden />
+
+      <p class="msg" id="msg" role="alert" hidden></p>
+    </main>
+
+    <section class="export enter" id="exportPanel" hidden aria-label="Export video">
+      <div class="row" role="radiogroup" aria-label="Video size">
+        <button class="btn m chip" role="radio" aria-checked="true" data-w="1080" data-h="1080" data-name="Square">1:1</button>
+        <button class="btn m chip" role="radio" aria-checked="false" data-w="1080" data-h="1350" data-name="Portrait">4:5</button>
+        <button class="btn m chip" role="radio" aria-checked="false" data-w="1080" data-h="1920" data-name="Story / Reels / TikTok">9:16</button>
+        <button class="btn m chip" role="radio" aria-checked="false" data-w="1920" data-h="1080" data-name="Landscape">16:9</button>
+      </div>
+      <p class="caption" id="caption"></p>
+      <div class="row actions">
+        <button class="pill compact" id="playBtn" type="button">
+          <span class="icon fill i-play" aria-hidden="true">play_arrow</span>
+          <span class="icon fill i-pause" aria-hidden="true">pause</span>
+          <span class="t-play">Preview</span>
+          <span class="t-pause">Pause</span>
+        </button>
+        <button class="pill compact" id="exportBtn" type="button">
+          <span class="bar" id="progressBar" aria-hidden="true"></span>
+          <span class="icon" aria-hidden="true">download</span>
+          <span class="label">Export MP4</span>
+          <span class="pct" id="pct">Exporting 0%</span>
+        </button>
+        <button class="pill compact" id="wmBtn" type="button" aria-pressed="true">
+          <span class="icon fill i-on" aria-hidden="true">check_box</span>
+          <span class="icon i-off" aria-hidden="true">check_box_outline_blank</span>
+          <span>Watermark</span>
+        </button>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
     </section>
-
-    <h2>Your recordings</h2>
-    <ul id="list"></ul>
-    <div class="empty card" id="empty">No recordings yet.</div>
-  </main>
+  </div>
 
   <script>
-    const recBtn = document.getElementById("recBtn");
-    const hint = document.getElementById("hint");
-    const timerEl = document.getElementById("timer");
-    const errorEl = document.getElementById("error");
-    const listEl = document.getElementById("list");
-    const emptyEl = document.getElementById("empty");
-    const canvas = document.getElementById("wave");
-    const ctx = canvas.getContext("2d");
+    "use strict";
 
-    let recorder, stream, audioCtx, analyser, chunks = [], startTime, tick, rafId;
+    const $ = (s) => document.querySelector(s);
+    const app = $("#app");
+    const bg = $("#bg");
+    const bgCtx = bg.getContext("2d");
+    const ring = $("#ring");
+    const ringCtx = ring.getContext("2d");
+    const micBtn = $("#micBtn");
+    const uploadBtn = $("#uploadBtn");
+    const fileInput = $("#fileInput");
+    const timerEl = $("#timer");
+    const msgEl = $("#msg");
+    const exportPanel = $("#exportPanel");
+    const playBtn = $("#playBtn");
+    const exportBtn = $("#exportBtn");
+    const wmBtn = $("#wmBtn");
+    const captionEl = $("#caption");
+    const statusEl = $("#status");
+    const pctEl = $("#pct");
 
-    // ---------- Storage (IndexedDB, so recordings survive a page refresh) ----------
-    let db = null;
-    function openDb() {
-      return new Promise((resolve) => {
-        try {
-          const req = indexedDB.open("voice-upload", 1);
-          req.onupgradeneeded = () => req.result.createObjectStore("clips", { keyPath: "id" });
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve(null);
-        } catch { resolve(null); }
-      });
+    const MAX_SECONDS = 60;
+    const EXPORT_FPS = 30;
+    const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
+
+    // =====================================================================
+    // Gradient mesh renderer
+    // Soft blobs are drawn into a small buffer and upscaled, which gives the
+    // blur for free and keeps both the live view and the export at 60fps.
+    // =====================================================================
+    const BLOBS = [
+      // bright teal glow, top-centre — driven by low frequencies
+      { h: 173, s: 72, l: 50, a: 0.95, x: 0.5, y: 0.02, r: 0.62, ax: 0.16, ay: 0.12, fx: 0.31, fy: 0.23, px: 0.0, py: 1.3, band: "low" },
+      // deep ocean blue, right side — driven by mids
+      { h: 207, s: 62, l: 30, a: 0.9, x: 0.96, y: 0.36, r: 0.5, ax: 0.1, ay: 0.16, fx: 0.19, fy: 0.27, px: 2.1, py: 0.4, band: "mid" },
+      // electric cyan, bottom-right — driven by highs
+      { h: 193, s: 92, l: 56, a: 0.95, x: 1.0, y: 1.0, r: 0.46, ax: 0.14, ay: 0.1, fx: 0.24, fy: 0.35, px: 4.0, py: 2.7, band: "high" },
+      // dark sea green, centre-left — driven by overall volume
+      { h: 166, s: 58, l: 22, a: 0.8, x: 0.34, y: 0.42, r: 0.42, ax: 0.18, ay: 0.14, fx: 0.27, fy: 0.17, px: 1.1, py: 3.4, band: "level" },
+    ];
+
+    const grain = (() => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 192;
+      const g = c.getContext("2d");
+      const img = g.createImageData(c.width, c.height);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const v = Math.random() * 255;
+        img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
+        img.data[i + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+      return c;
+    })();
+
+    class Visual {
+      constructor() {
+        this.t = Math.random() * 50;
+        this.level = this.low = this.mid = this.high = 0;
+        this.freq = null;
+        this.time = null;
+        this.speed = 0;
+        this.buf = document.createElement("canvas");
+        this.bctx = this.buf.getContext("2d");
+        this.soft = document.createElement("canvas");
+        this.sctx = this.soft.getContext("2d");
+        this.canBlur = "filter" in this.sctx;
+        this.patterns = new WeakMap();
+      }
+
+      // Read the analyser and ease every value so motion stays fluid.
+      update(analyser, dt) {
+        let tl = 0, tm = 0, th = 0, tv = 0;
+        if (analyser) {
+          if (!this.freq || this.freq.length !== analyser.frequencyBinCount) {
+            this.freq = new Uint8Array(analyser.frequencyBinCount);
+            this.time = new Uint8Array(analyser.fftSize);
+          }
+          analyser.getByteFrequencyData(this.freq);
+          analyser.getByteTimeDomainData(this.time);
+          const hz = analyser.context.sampleRate / analyser.fftSize;
+          const band = (from, to) => {
+            let sum = 0, n = 0;
+            const end = Math.min(this.freq.length - 1, Math.ceil(to / hz));
+            for (let i = Math.max(1, Math.floor(from / hz)); i <= end; i++) { sum += this.freq[i]; n++; }
+            return n ? sum / n / 255 : 0;
+          };
+          tl = clamp((band(30, 250) - 0.12) / 0.6);
+          tm = clamp((band(250, 2000) - 0.1) / 0.55);
+          th = clamp((band(2000, 8000) - 0.05) / 0.45);
+          let sq = 0;
+          for (let i = 0; i < this.time.length; i++) { const d = (this.time[i] - 128) / 128; sq += d * d; }
+          tv = clamp(Math.sqrt(sq / this.time.length) * 5);
+        } else if (this.freq) {
+          this.freq.fill(0);
+        }
+        const ease = (cur, target, up = 0.09, down = 0.035) => {
+          const rate = target > cur ? up : down; // gentle attack, slower release
+          return cur + (target - cur) * (1 - Math.pow(1 - rate, dt * 60));
+        };
+        this.level = ease(this.level, tv);
+        this.low = ease(this.low, tl);
+        this.mid = ease(this.mid, tm);
+        this.high = ease(this.high, th);
+
+        // Ease the flow speed separately so the drift never lurches.
+        const base = reducedMotion ? 0.12 : 0.3;
+        const targetSpeed = base + this.level * (reducedMotion ? 0.3 : 1.2);
+        this.speed = ease(this.speed || base, targetSpeed, 0.05, 0.03);
+        this.t += dt * this.speed;
+      }
+
+      draw(ctx, w, h) {
+        const scale = 0.22;
+        const bw = Math.max(48, Math.round(w * scale));
+        const bh = Math.max(48, Math.round(h * scale));
+        if (this.buf.width !== bw || this.buf.height !== bh) { this.buf.width = bw; this.buf.height = bh; }
+
+        const b = this.bctx;
+        b.globalCompositeOperation = "source-over";
+        b.fillStyle = "#000";
+        b.fillRect(0, 0, bw, bh);
+        b.globalCompositeOperation = "screen";
+
+        const t = this.t;
+        const m = Math.max(bw, bh);
+        const hueShift = Math.sin(t * 0.13) * 12 + this.high * 14;
+        for (const blob of BLOBS) {
+          const amp = this[blob.band];
+          const x = (blob.x + Math.sin(t * blob.fx + blob.px) * blob.ax * (1 + this.level * 0.6)) * bw;
+          const y = (blob.y + Math.cos(t * blob.fy + blob.py) * blob.ay * (1 + this.level * 0.6)) * bh;
+          const r = blob.r * m * (1 + amp * 0.4 + this.level * 0.14 + Math.sin(t * 0.5 + blob.px) * 0.04);
+          const hue = blob.h + hueShift + Math.sin(t * 0.2 + blob.py) * 6;
+          const light = Math.min(78, blob.l + amp * 18 + this.level * 7);
+          const alpha = Math.min(1, blob.a * (0.85 + amp * 0.3));
+          // Smooth (1 - d²)² falloff over several stops, so blobs have no visible edge.
+          const g = b.createRadialGradient(x, y, 0, x, y, r);
+          for (let i = 0; i <= 8; i++) {
+            const d = i / 8;
+            const f = (1 - d * d) ** 2;
+            g.addColorStop(d, `hsla(${hue}, ${blob.s}%, ${light * (0.6 + 0.4 * f)}%, ${alpha * f})`);
+          }
+          b.fillStyle = g;
+          b.fillRect(0, 0, bw, bh);
+        }
+
+        // Extra blur pass at low resolution (cheap) removes upscaling artefacts.
+        let src = this.buf;
+        if (this.canBlur) {
+          const s = this.sctx;
+          if (this.soft.width !== bw || this.soft.height !== bh) { this.soft.width = bw; this.soft.height = bh; }
+          s.filter = `blur(${Math.max(2, m * 0.03).toFixed(1)}px)`;
+          s.drawImage(this.buf, 0, 0);
+          s.filter = "none";
+          src = this.soft;
+        }
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = "high";
+        ctx.drawImage(src, 0, 0, w, h);
+
+        // Moving film grain hides gradient banding (on screen and in the MP4).
+        let pattern = this.patterns.get(ctx);
+        if (!pattern) { pattern = ctx.createPattern(grain, "repeat"); this.patterns.set(ctx, pattern); }
+        if (pattern.setTransform) {
+          pattern.setTransform(new DOMMatrix().translate((Math.random() * 192) | 0, (Math.random() * 192) | 0));
+        }
+        ctx.globalCompositeOperation = "overlay";
+        ctx.globalAlpha = 0.035;
+        ctx.fillStyle = pattern;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
     }
-    function store(mode) { return db.transaction("clips", mode).objectStore("clips"); }
-    function saveClip(clip) { try { db && store("readwrite").put(clip); } catch {} }
-    function deleteClip(id) { try { db && store("readwrite").delete(id); } catch {} }
-    function loadClips() {
-      return new Promise((resolve) => {
-        if (!db) return resolve([]);
-        try {
-          const req = store("readonly").getAll();
-          req.onsuccess = () => resolve(req.result);
-          req.onerror = () => resolve([]);
-        } catch { resolve([]); }
-      });
+
+    const live = new Visual();
+
+    // =====================================================================
+    // Audio graph
+    // =====================================================================
+    let audioCtx = null;
+    let analyser = null;
+
+    function makeAnalyser(ctx) {
+      const a = ctx.createAnalyser();
+      a.fftSize = 2048;
+      a.minDecibels = -90;
+      a.maxDecibels = -20;
+      a.smoothingTimeConstant = 0.85;
+      return a;
     }
 
-    // ---------- Recording ----------
-    function pickMimeType() {
-      const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg"];
-      return types.find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";
+    function getAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        analyser = makeAnalyser(audioCtx);
+      }
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      return audioCtx;
+    }
+
+    // =====================================================================
+    // State + UI helpers
+    // =====================================================================
+    const state = {
+      recording: false,
+      playing: false,
+      exporting: false,
+    };
+    let clip = null;      // { blob, url, buffer, player, source }
+    let size = { w: 1080, h: 1080, name: "Square" };
+    let watermark = true;
+    let msgTimer = null;
+
+    function setMode() {
+      app.classList.toggle("recording", state.recording);
+      app.classList.toggle("playing", state.playing);
+      app.classList.toggle("exporting", state.exporting);
+      micBtn.setAttribute("aria-label", state.recording ? "Stop recording" : "Start recording");
+      micBtn.disabled = state.exporting;
+      uploadBtn.disabled = state.exporting || state.recording;
+      playBtn.disabled = state.exporting;
+      exportBtn.disabled = state.exporting;
+      document.querySelectorAll(".chip").forEach((c) => (c.disabled = state.exporting));
+      wmBtn.disabled = state.exporting;
+    }
+
+    function showMessage(text, { nudgeUpload = false, ms = 9000 } = {}) {
+      msgEl.textContent = text;
+      msgEl.hidden = false;
+      clearTimeout(msgTimer);
+      msgTimer = setTimeout(() => (msgEl.hidden = true), ms);
+      if (nudgeUpload) {
+        uploadBtn.classList.remove("nudge");
+        void uploadBtn.offsetWidth;
+        uploadBtn.classList.add("nudge");
+      }
+    }
+    function hideMessage() { msgEl.hidden = true; }
+
+    function fmt(sec) {
+      sec = Math.max(0, Math.floor(sec));
+      return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+    }
+
+    function showExportPanel() {
+      if (!exportPanel.hidden) return;
+      exportPanel.hidden = false;
+      requestAnimationFrame(() => requestAnimationFrame(() => exportPanel.classList.remove("enter")));
+    }
+
+    // =====================================================================
+    // Recording
+    // =====================================================================
+    let micStream = null, micSource = null, recorder = null, recChunks = [], recStart = 0, recCap = null;
+
+    function pickType(types) {
+      if (!window.MediaRecorder) return "";
+      return types.find((t) => MediaRecorder.isTypeSupported(t)) || "";
     }
 
     async function startRecording() {
-      errorEl.hidden = true;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      } catch (e) {
-        showError("Microphone access was blocked. Allow the microphone in your browser settings and try again.");
+      hideMessage();
+      pause();
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        showMessage("This browser can't record audio. Upload a voice file instead.", { nudgeUpload: true });
         return;
       }
-      const mimeType = pickMimeType();
-      recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      chunks = [];
-      recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
-      recorder.onstop = onRecordingDone;
-      recorder.start();
+      const ctx = getAudio();
+      try {
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        });
+      } catch (err) {
+        const blocked = err && (err.name === "NotAllowedError" || err.name === "SecurityError");
+        showMessage(
+          blocked
+            ? "Microphone access is blocked. Allow it in your browser's site settings, or upload a voice file instead."
+            : "No microphone found. You can upload a voice file instead.",
+          { nudgeUpload: true }
+        );
+        return;
+      }
 
-      audioCtx = new AudioContext();
-      analyser = audioCtx.createAnalyser();
-      analyser.fftSize = 1024;
-      audioCtx.createMediaStreamSource(stream).connect(analyser);
-      drawWave();
+      micSource = ctx.createMediaStreamSource(micStream);
+      micSource.connect(analyser); // analyser only: never to the speakers (feedback)
 
-      startTime = Date.now();
-      tick = setInterval(() => (timerEl.textContent = fmt((Date.now() - startTime) / 1000)), 250);
-      recBtn.classList.add("recording");
-      recBtn.setAttribute("aria-label", "Stop recording");
-      hint.textContent = "Recording… tap to stop";
+      const type = pickType(["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"]);
+      recorder = new MediaRecorder(micStream, type ? { mimeType: type } : undefined);
+      recChunks = [];
+      recorder.ondataavailable = (e) => e.data.size && recChunks.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(recChunks, { type: recorder.mimeType || type || "audio/webm" });
+        if (blob.size) loadClip(blob, { autoplay: false });
+      };
+      recorder.start(100);
+      recStart = performance.now();
+      recCap = setTimeout(() => {
+        stopRecording();
+        showMessage("Recordings are capped at 60 seconds.", { ms: 4000 });
+      }, MAX_SECONDS * 1000);
+      state.recording = true;
+      setMode();
     }
 
     function stopRecording() {
-      recorder.stop();
-      stream.getTracks().forEach((t) => t.stop());
-      clearInterval(tick);
-      cancelAnimationFrame(rafId);
-      audioCtx && audioCtx.close();
-      recBtn.classList.remove("recording");
-      recBtn.setAttribute("aria-label", "Start recording");
-      hint.textContent = "Tap to start recording";
-      drawIdle();
+      if (!state.recording) return;
+      clearTimeout(recCap);
+      if (recorder && recorder.state !== "inactive") recorder.stop();
+      micStream?.getTracks().forEach((t) => t.stop());
+      micSource?.disconnect();
+      micSource = null;
+      micStream = null;
+      state.recording = false;
+      setMode();
     }
 
-    function onRecordingDone() {
-      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
-      const duration = (Date.now() - startTime) / 1000;
-      timerEl.textContent = "00:00";
-      addClip({ blob, name: "Recording " + new Date().toLocaleString(), duration });
+    micBtn.addEventListener("click", () => (state.recording ? stopRecording() : startRecording()));
+
+    // =====================================================================
+    // Upload
+    // =====================================================================
+    const AUDIO_EXT = /\.(mp3|wav|m4a|webm|mp4|aac|ogg)$/i;
+
+    function handleFile(file) {
+      if (!file) return;
+      if (!file.type.startsWith("audio/") && !AUDIO_EXT.test(file.name)) {
+        showMessage("That doesn't look like an audio file. Try mp3, wav, m4a or webm.");
+        return;
+      }
+      hideMessage();
+      loadClip(file, { autoplay: true });
     }
 
-    recBtn.addEventListener("click", () => {
-      recorder && recorder.state === "recording" ? stopRecording() : startRecording();
+    uploadBtn.addEventListener("click", () => fileInput.click());
+    fileInput.addEventListener("change", () => {
+      handleFile(fileInput.files[0]);
+      fileInput.value = "";
+    });
+    window.addEventListener("dragover", (e) => e.preventDefault());
+    window.addEventListener("drop", (e) => {
+      e.preventDefault();
+      if (!state.recording && !state.exporting) handleFile(e.dataTransfer.files[0]);
     });
 
-    // ---------- File upload ----------
-    document.getElementById("fileInput").addEventListener("change", (e) => {
-      [...e.target.files].forEach((file) => {
-        if (!file.type.startsWith("audio/")) return showError(file.name + " is not an audio file.");
-        addClip({ blob: file, name: file.name.replace(/\.[^.]+$/, ""), duration: null });
+    // =====================================================================
+    // Clip playback
+    // =====================================================================
+    async function loadClip(blob, { autoplay }) {
+      const ctx = getAudio();
+      let buffer;
+      try {
+        buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+      } catch {
+        showMessage("Couldn't read that audio. Try an mp3, wav, m4a or webm file.");
+        return;
+      }
+
+      if (clip) {
+        clip.player.pause();
+        clip.source.disconnect();
+        URL.revokeObjectURL(clip.url);
+      }
+      const url = URL.createObjectURL(blob);
+      const player = new Audio(url);
+      player.preload = "auto";
+      const source = ctx.createMediaElementSource(player);
+      source.connect(analyser);
+      source.connect(ctx.destination);
+      player.addEventListener("play", () => { state.playing = true; setMode(); });
+      player.addEventListener("pause", () => { state.playing = false; setMode(); });
+      player.addEventListener("ended", () => { state.playing = false; setMode(); });
+      clip = { blob, url, buffer, player, source };
+
+      showExportPanel();
+      if (autoplay) play();
+    }
+
+    function play() {
+      if (!clip || state.exporting) return;
+      getAudio();
+      if (clip.player.ended) clip.player.currentTime = 0;
+      clip.player.play().catch(() => {});
+    }
+    function pause() { clip?.player.pause(); }
+
+    playBtn.addEventListener("click", () => (state.playing ? pause() : play()));
+
+    // =====================================================================
+    // Export
+    // =====================================================================
+    function selectChip(chip) {
+      document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-checked", String(c === chip)));
+      size = { w: +chip.dataset.w, h: +chip.dataset.h, name: chip.dataset.name };
+      captionEl.textContent = `${size.name} · ${size.w}×${size.h}`;
+    }
+    document.querySelectorAll(".chip").forEach((chip) => {
+      chip.addEventListener("click", () => selectChip(chip));
+      chip.addEventListener("keydown", (e) => {
+        const chips = [...document.querySelectorAll(".chip")];
+        const dir = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+        if (!dir) return;
+        e.preventDefault();
+        const next = chips[(chips.indexOf(chip) + dir + chips.length) % chips.length];
+        selectChip(next);
+        next.focus();
       });
-      e.target.value = "";
+    });
+    selectChip(document.querySelector(".chip"));
+
+    wmBtn.addEventListener("click", () => {
+      watermark = !watermark;
+      wmBtn.setAttribute("aria-pressed", String(watermark));
     });
 
-    // ---------- List ----------
-    function addClip({ blob, name, duration }) {
-      const clip = { id: crypto.randomUUID(), name, blob, type: blob.type, duration, createdAt: Date.now() };
-      saveClip(clip);
-      renderClip(clip, true);
+    function setProgress(p) {
+      const v = Math.round(clamp(p) * 100);
+      exportBtn.style.setProperty("--p", v);
+      pctEl.textContent = "Exporting " + v + "%";
     }
 
-    function renderClip(clip, prepend) {
-      const url = URL.createObjectURL(clip.blob);
-      const ext = (clip.type.split("/")[1] || "webm").split(";")[0];
-      const li = document.createElement("li");
-      li.className = "card item";
-      li.innerHTML = `
-        <div class="row">
-          <input class="name" aria-label="Recording name" />
-          <a class="icon-btn" download>Download</a>
-          <button class="icon-btn danger">Delete</button>
-        </div>
-        <div class="meta"></div>
-        <audio controls preload="metadata"></audio>`;
-      const nameInput = li.querySelector(".name");
-      nameInput.value = clip.name;
-      nameInput.addEventListener("change", () => {
-        clip.name = nameInput.value.trim() || "Untitled";
-        nameInput.value = clip.name;
-        link.download = clip.name + "." + ext;
-        saveClip(clip);
-      });
-      const link = li.querySelector("a");
-      link.href = url;
-      link.download = clip.name + "." + ext;
-      const audio = li.querySelector("audio");
-      audio.src = url;
-      const meta = li.querySelector(".meta");
-      const setMeta = (d) =>
-        (meta.textContent = new Date(clip.createdAt).toLocaleString() + (d ? " · " + fmt(d) : ""));
-      setMeta(clip.duration);
-      audio.addEventListener("loadedmetadata", () => isFinite(audio.duration) && setMeta(audio.duration));
-      li.querySelector(".danger").addEventListener("click", () => {
-        if (!confirm(`Delete "${clip.name}"?`)) return;
-        deleteClip(clip.id);
-        URL.revokeObjectURL(url);
-        li.remove();
-        updateEmpty();
-      });
-      prepend ? listEl.prepend(li) : listEl.append(li);
-      updateEmpty();
+    const MP4_TYPES = [
+      'video/mp4;codecs="avc1.640028,mp4a.40.2"',
+      'video/mp4;codecs="avc1.4D0028,mp4a.40.2"',
+      'video/mp4;codecs="avc1.42E01E,mp4a.40.2"',
+      "video/mp4;codecs=avc1,mp4a",
+      "video/mp4",
+    ];
+    const WEBM_TYPES = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
+
+    let job = null; // the export currently rendering: { vis, an, canvas, ctx, w, h, watermark, start, duration, share }
+
+    function drawWatermark(ctx, w, h) {
+      const fontSize = Math.round(Math.min(w, h) * 0.034);
+      const pad = Math.round(Math.min(w, h) * 0.05);
+      ctx.save();
+      ctx.font = `600 ${fontSize}px Inter, system-ui, sans-serif`;
+      ctx.textAlign = "right";
+      ctx.textBaseline = "alphabetic";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+      ctx.fillText("VoiceMotion", w - pad, h - pad);
+      ctx.restore();
     }
 
-    function updateEmpty() { emptyEl.hidden = listEl.children.length > 0; }
-
-    // ---------- Helpers ----------
-    function fmt(sec) {
-      sec = Math.round(sec);
-      return String(Math.floor(sec / 60)).padStart(2, "0") + ":" + String(sec % 60).padStart(2, "0");
-    }
-    function showError(msg) { errorEl.textContent = msg; errorEl.hidden = false; }
-
-    function sizeCanvas() {
-      const dpr = window.devicePixelRatio || 1;
-      canvas.width = canvas.clientWidth * dpr;
-      canvas.height = canvas.clientHeight * dpr;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    }
-    function waveColor() { return getComputedStyle(document.documentElement).getPropertyValue("--wave"); }
-
-    function drawIdle() {
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-      ctx.strokeStyle = waveColor();
-      ctx.globalAlpha = 0.25;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, h / 2);
-      ctx.lineTo(w, h / 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
+    function renderJobFrame(dt) {
+      job.vis.update(job.an, dt);
+      job.vis.draw(job.ctx, job.w, job.h);
+      if (job.watermark) drawWatermark(job.ctx, job.w, job.h);
+      if (job.start != null) {
+        const p = (audioCtx.currentTime - job.start) / job.duration;
+        setProgress(clamp(p) * job.share);
+      }
     }
 
-    function drawWave() {
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      const w = canvas.clientWidth, h = canvas.clientHeight;
-      const bars = 48, gap = 3, bw = (w - gap * (bars - 1)) / bars;
-      (function frame() {
-        analyser.getByteTimeDomainData(data);
-        ctx.clearRect(0, 0, w, h);
-        ctx.fillStyle = waveColor();
-        const step = Math.floor(data.length / bars);
-        for (let i = 0; i < bars; i++) {
-          let peak = 0;
-          for (let j = 0; j < step; j++) peak = Math.max(peak, Math.abs(data[i * step + j] - 128));
-          const bh = Math.max(3, (peak / 128) * h * 1.6);
-          ctx.fillRect(i * (bw + gap), (h - bh) / 2, bw, Math.min(bh, h));
+    async function exportVideo() {
+      if (!clip || state.exporting) return;
+      if (!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+        showMessage("This browser can't export video. Try the latest Chrome, Edge or Safari.");
+        return;
+      }
+      pause();
+      hideMessage();
+      state.exporting = true;
+      setMode();
+      setProgress(0);
+      statusEl.textContent = "Rendering… keep this tab open";
+
+      const ctx = getAudio();
+      await ctx.resume();
+      const { w, h } = size;
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+
+      const mp4Type = pickType(MP4_TYPES);
+      const mime = mp4Type || pickType(WEBM_TYPES);
+      const src = ctx.createBufferSource();
+      src.buffer = clip.buffer;
+      const an = makeAnalyser(ctx);
+      const dest = ctx.createMediaStreamDestination();
+      src.connect(an);
+      src.connect(dest);
+
+      job = {
+        vis: new Visual(),
+        an,
+        canvas,
+        ctx: canvas.getContext("2d"),
+        w,
+        h,
+        watermark,
+        start: null,
+        duration: clip.buffer.duration,
+        share: mp4Type ? 1 : 0.6, // leave room on the progress ring for MP4 conversion
+      };
+      job.vis.t = live.t;
+      renderJobFrame(0);
+
+      try {
+        const stream = new MediaStream([
+          ...canvas.captureStream(EXPORT_FPS).getVideoTracks(),
+          ...dest.stream.getAudioTracks(),
+        ]);
+        const rec = new MediaRecorder(stream, {
+          ...(mime ? { mimeType: mime } : {}),
+          videoBitsPerSecond: w * h >= 1920 * 1080 ? 14_000_000 : 10_000_000,
+          audioBitsPerSecond: 192_000,
+        });
+        const parts = [];
+        rec.ondataavailable = (e) => e.data.size && parts.push(e.data);
+        const stopped = new Promise((r) => (rec.onstop = r));
+        const ended = new Promise((r) => (src.onended = r));
+
+        rec.start(500);
+        job.start = ctx.currentTime + 0.15;
+        src.start(job.start);
+        await ended;
+        await new Promise((r) => setTimeout(r, 250));
+        rec.stop();
+        await stopped;
+        stream.getTracks().forEach((t) => t.stop());
+        src.disconnect();
+        job = null;
+
+        const recordedType = (rec.mimeType || mime || "video/webm").split(";")[0];
+        let blob = new Blob(parts, { type: recordedType });
+        let ext = recordedType.includes("mp4") ? "mp4" : "webm";
+
+        if (ext !== "mp4") {
+          statusEl.textContent = "Converting to MP4…";
+          try {
+            blob = await convertToMp4(blob, (p) => setProgress(0.6 + p * 0.4));
+            ext = "mp4";
+          } catch (err) {
+            console.warn("MP4 conversion failed", err);
+            showMessage("MP4 conversion isn't available here, so your video was saved as WebM instead.");
+          }
         }
-        rafId = requestAnimationFrame(frame);
-      })();
+
+        setProgress(1);
+        download(blob, `voicemotion-${w}x${h}.${ext}`);
+        statusEl.textContent = "Done — check your downloads";
+        setTimeout(() => { if (!state.exporting) statusEl.textContent = ""; }, 5000);
+      } catch (err) {
+        console.error(err);
+        showMessage("Export failed. Please try again, or pick a smaller size.");
+        statusEl.textContent = "";
+      } finally {
+        try { src.stop(); } catch {}
+        job = null;
+        state.exporting = false;
+        setMode();
+      }
     }
 
-    // ---------- Start ----------
-    if (!navigator.mediaDevices || !window.MediaRecorder) {
-      showError("Your browser doesn't support recording. You can still upload audio files.");
-      recBtn.disabled = true;
+    function download(blob, name) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = name;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
     }
-    sizeCanvas();
-    drawIdle();
-    window.addEventListener("resize", () => { sizeCanvas(); if (!recorder || recorder.state !== "recording") drawIdle(); });
 
-    openDb().then(async (d) => {
-      db = d;
-      const clips = await loadClips();
-      clips.sort((a, b) => b.createdAt - a.createdAt).forEach((c) => renderClip(c, false));
-      updateEmpty();
-    });
+    // ffmpeg.wasm is only loaded when the browser can't record MP4 directly (e.g. Firefox).
+    const FF = "https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd";
+    const FF_UTIL = "https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js";
+    const FF_CORE = "https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd";
+    let ffmpegReady = null;
+
+    function loadScript(src) {
+      return new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = src;
+        s.onload = resolve;
+        s.onerror = () => reject(new Error("Failed to load " + src));
+        document.head.appendChild(s);
+      });
+    }
+
+    function getFFmpeg() {
+      ffmpegReady ??= (async () => {
+        await Promise.all([loadScript(`${FF}/ffmpeg.js`), loadScript(FF_UTIL)]);
+        const { FFmpeg } = window.FFmpegWASM;
+        const { toBlobURL } = window.FFmpegUtil;
+        const ff = new FFmpeg();
+        await ff.load({
+          classWorkerURL: await toBlobURL(`${FF}/814.ffmpeg.js`, "text/javascript"),
+          coreURL: await toBlobURL(`${FF_CORE}/ffmpeg-core.js`, "text/javascript"),
+          wasmURL: await toBlobURL(`${FF_CORE}/ffmpeg-core.wasm`, "application/wasm"),
+        });
+        return ff;
+      })().catch((err) => { ffmpegReady = null; throw err; });
+      return ffmpegReady;
+    }
+
+    async function convertToMp4(webm, onProgress) {
+      const ff = await getFFmpeg();
+      const onFF = ({ progress }) => onProgress(clamp(progress));
+      ff.on("progress", onFF);
+      try {
+        await ff.writeFile("in.webm", new Uint8Array(await webm.arrayBuffer()));
+        const code = await ff.exec([
+          "-i", "in.webm",
+          "-c:v", "libx264", "-preset", "ultrafast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(EXPORT_FPS),
+          "-c:a", "aac", "-b:a", "192k",
+          "-movflags", "+faststart",
+          "out.mp4",
+        ]);
+        if (code !== 0) throw new Error("ffmpeg exited with " + code);
+        const data = await ff.readFile("out.mp4");
+        return new Blob([data.buffer], { type: "video/mp4" });
+      } finally {
+        ff.off("progress", onFF);
+        await ff.deleteFile("in.webm").catch(() => {});
+        await ff.deleteFile("out.mp4").catch(() => {});
+      }
+    }
+
+    exportBtn.addEventListener("click", exportVideo);
+
+    // =====================================================================
+    // Audio-reactive ring around the mic button
+    // =====================================================================
+    const RING_BARS = 72;
+    const ringVals = new Float32Array(RING_BARS);
+    let ringAlpha = 0;
+
+    function drawRing(dt, active) {
+      const w = ring.width, h = ring.height;
+      ringCtx.clearRect(0, 0, w, h);
+      ringAlpha += ((active ? 1 : 0) - ringAlpha) * (1 - Math.pow(0.9, dt * 60));
+      if (ringAlpha < 0.01) return;
+
+      const cx = w / 2, cy = h / 2;
+      const inner = w / 2 / 2.4 + w * 0.035; // button radius + gap
+      const maxLen = w * 0.13;
+      const freq = live.freq;
+      const half = RING_BARS / 2;
+      ringCtx.lineCap = "round";
+      ringCtx.lineWidth = Math.max(2, w * 0.012);
+      ringCtx.strokeStyle = `rgba(255, 255, 255, ${0.85 * ringAlpha})`;
+      ringCtx.beginPath();
+      for (let i = 0; i < RING_BARS; i++) {
+        // mirror so the ring is symmetric; low frequencies at the top
+        const k = i < half ? i : RING_BARS - 1 - i;
+        let target = 0;
+        if (active && freq) {
+          const bin = 2 + Math.floor(Math.pow(k / half, 1.7) * freq.length * 0.35);
+          target = clamp((freq[bin] / 255 - 0.15) / 0.7);
+        }
+        ringVals[i] += (target - ringVals[i]) * (1 - Math.pow(target > ringVals[i] ? 0.6 : 0.88, dt * 60));
+        const len = maxLen * (0.06 + ringVals[i]);
+        const ang = (i / RING_BARS) * Math.PI * 2 - Math.PI / 2;
+        const cos = Math.cos(ang), sin = Math.sin(ang);
+        ringCtx.moveTo(cx + cos * inner, cy + sin * inner);
+        ringCtx.lineTo(cx + cos * (inner + len), cy + sin * (inner + len));
+      }
+      ringCtx.stroke();
+    }
+
+    // =====================================================================
+    // Main loop
+    // =====================================================================
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      bg.width = Math.round(innerWidth * dpr);
+      bg.height = Math.round(innerHeight * dpr);
+      ring.width = Math.round(ring.clientWidth * dpr);
+      ring.height = Math.round(ring.clientHeight * dpr);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    function updateTimer() {
+      let text = "";
+      if (state.recording) {
+        text = `${fmt((performance.now() - recStart) / 1000)} / ${fmt(MAX_SECONDS)}`;
+      } else if (clip) {
+        const d = clip.buffer.duration;
+        text = state.playing || clip.player.currentTime > 0 && !clip.player.ended
+          ? `${fmt(clip.player.currentTime)} / ${fmt(d)}`
+          : fmt(d);
+      }
+      if (timerEl.textContent !== text) timerEl.textContent = text;
+    }
+
+    let raf = null, last = 0;
+    function frame(now) {
+      const dt = Math.min(0.1, (now - last) / 1000 || 0);
+      last = now;
+      const active = state.recording || state.playing;
+      live.update(active ? analyser : null, dt);
+      live.draw(bgCtx, bg.width, bg.height);
+      drawRing(dt, active);
+      if (job) renderJobFrame(dt);
+      updateTimer();
+      raf = requestAnimationFrame(frame);
+    }
+
+    function startLoop() {
+      if (raf) return;
+      last = performance.now();
+      raf = requestAnimationFrame(frame);
+    }
+    function stopLoop() {
+      cancelAnimationFrame(raf);
+      raf = null;
+    }
+
+    // Pause the animation when the tab is hidden to save battery.
+    document.addEventListener("visibilitychange", () => (document.hidden ? stopLoop() : startLoop()));
+    setMode();
+    startLoop();
   </script>
 </body>
 </html>
