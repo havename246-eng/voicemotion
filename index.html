@@ -242,24 +242,18 @@
     .export.enter { opacity: 0; transform: translateY(12px); }
     .row { display: flex; align-items: flex-start; justify-content: center; gap: 12px; }
     .row[role="radiogroup"] { margin-bottom: 8px; }
-    .color-btn {
-      position: fixed;
-      right: max(16px, env(safe-area-inset-right));
-      bottom: max(16px, env(safe-area-inset-bottom));
-      z-index: 2;
-    }
-    .copyright {
-      position: fixed;
-      left: max(16px, env(safe-area-inset-left));
-      bottom: max(16px, env(safe-area-inset-bottom));
-      z-index: 2;
-      height: var(--m); /* same height as the palette button, so they line up */
+    /* Bottom row: copyright left, palette button right. It's part of the page
+       flow so it can never overlap the export controls on small screens. */
+    .foot {
+      flex: none;
+      width: 100%;
       display: flex;
       align-items: center;
-      font-size: .8rem;
-      opacity: .7;
-      pointer-events: none;
+      justify-content: space-between;
+      margin-top: 12px;
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
     }
+    .copyright { font-size: .8rem; opacity: .7; }
     .color-btn[aria-expanded="true"] { box-shadow: 0 0 0 3px rgba(255, 255, 255, .35); }
 
     /* ---------- Color panel ---------- */
@@ -322,7 +316,7 @@
       border-radius: 10px;
       background: rgba(255, 255, 255, .08);
       color: var(--white);
-      font: 500 .875rem/1 "Google Sans", system-ui, sans-serif;
+      font: 500 1rem/1 "Google Sans", system-ui, sans-serif; /* 16px stops iOS zooming on focus */
       font-variant-numeric: tabular-nums;
       text-transform: uppercase;
     }
@@ -377,6 +371,52 @@
       .caption { display: none; }
       .export { gap: 8px; }
     }
+
+    /* ---------- Phones ---------- */
+    @media (max-width: 440px) {
+      .row { gap: 10px; }
+      .row.actions { flex-wrap: nowrap; gap: 6px; }
+      .pill.compact { height: 42px; padding: 0 12px 0 9px; gap: 4px; font-size: .8rem; }
+      .pill.compact .icon { font-size: 18px; }
+      .wordmark { height: 38px; }
+      nav { height: 52px; }
+    }
+
+    /* Phone in landscape: no room for a footer row, so pin it to the corners */
+    @media (max-height: 500px) and (min-width: 560px) {
+      nav { height: 40px; }
+      .wordmark { height: 30px; }
+      .foot {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: max(12px, env(safe-area-inset-bottom));
+        width: auto;
+        margin: 0;
+        padding: 0 max(16px, env(safe-area-inset-right)) 0 max(16px, env(safe-area-inset-left));
+        pointer-events: none;
+      }
+      .foot .btn { pointer-events: auto; }
+    }
+
+    /* ---------- Tablets: bigger controls to fill the space ---------- */
+    @media (min-width: 700px) and (min-height: 900px) {
+      :root { --s: 44px; --m: 64px; --l: 80px; --xl: 120px; }
+      .pill { height: 60px; font-size: 1.05rem; padding: 0 28px 0 24px; }
+      .pill.compact { height: 52px; padding: 0 22px 0 18px; font-size: .95rem; }
+      .pill.compact .icon { font-size: 22px; }
+      .row { gap: 14px; }
+      .caption, .status, .copyright { font-size: .9rem; }
+      .wordmark { height: 52px; }
+      nav { height: 72px; }
+    }
+
+    /* Touch screens: no sticky hover zoom, no double-tap zoom delay */
+    @media (hover: none) {
+      .btn:hover, .pill:hover, .preset:hover { transform: none; }
+      .btn:active, .pill:active { transform: scale(0.94); }
+    }
+    button { touch-action: manipulation; }
 
     @media (prefers-reduced-motion: reduce) {
       .recording .pulse { animation: none; opacity: .5; }
@@ -444,11 +484,12 @@
       <p class="status" id="status" aria-live="polite"></p>
     </section>
 
-    <footer class="copyright">Copyright © 2026</footer>
-
-    <button class="btn m color-btn" id="colorBtn" type="button" aria-label="Color configuration" title="Color configuration" aria-expanded="false" aria-controls="colorPanel">
-      <span class="icon fill" aria-hidden="true">palette</span>
-    </button>
+    <footer class="foot">
+      <p class="copyright">Copyright © 2026</p>
+      <button class="btn m color-btn" id="colorBtn" type="button" aria-label="Color configuration" title="Color configuration" aria-expanded="false" aria-controls="colorPanel">
+        <span class="icon fill" aria-hidden="true">palette</span>
+      </button>
+    </footer>
 
     <div class="color-panel enter" id="colorPanel" role="dialog" aria-label="Color configuration" hidden>
       <h2>Presets</h2>
@@ -1382,6 +1423,26 @@
       if (timerEl.textContent !== text) timerEl.textContent = text;
     }
 
+    // Keep the phone's status/browser bar the same color as the top of the
+    // gradient: average the canvas's top row a few times a second and use it
+    // for theme-color and the page background (Safari tints from both).
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    let themeTimer = 0, themeColor = "";
+    function syncThemeColor(dt) {
+      themeTimer -= dt;
+      if (themeTimer > 0 || !bg.width) return;
+      themeTimer = 0.3;
+      const d = bgCtx.getImageData(0, 0, bg.width, 1).data;
+      let r = 0, g = 0, b = 0, n = 0;
+      for (let i = 0; i < d.length; i += 16) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+      const c = "#" + [r, g, b].map((v) => Math.round(v / n).toString(16).padStart(2, "0")).join("");
+      if (c === themeColor) return;
+      themeColor = c;
+      themeMeta.content = c;
+      document.documentElement.style.background = c;
+      document.body.style.background = c;
+    }
+
     const liveWave = makeWave();
     let waveAlpha = 0;
     let raf = null, last = 0;
@@ -1391,6 +1452,7 @@
       const active = state.recording || state.playing;
       live.update(active ? analyser : null, dt);
       live.draw(bgCtx, bg.width, bg.height);
+      syncThemeColor(dt);
       // preview shows the same rhythm waveform the export will contain
       waveAlpha += ((state.playing ? 1 : 0) - waveAlpha) * (1 - Math.pow(0.9, dt * 60));
       // on screen the wave sits low, just below the Upload button, so it clears the mic
