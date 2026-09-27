@@ -418,6 +418,90 @@
     }
     button { touch-action: manipulation; }
 
+    /* ---------- Video details sheet ---------- */
+    .sheet-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: rgba(0, 0, 0, .55);
+      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(8px);
+    }
+    .sheet-backdrop[hidden] { display: none; }
+    .sheet {
+      width: min(480px, 100%);
+      max-height: calc(100dvh - 32px);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      padding: 20px;
+      border-radius: 22px;
+      background: #141414;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+      outline: none;
+    }
+    .sheet-head h2 { font-size: 1.15rem; font-weight: 600; }
+    .sheet-head p { margin-top: 4px; font-size: .85rem; line-height: 1.4; opacity: .65; }
+    .sheet-preview {
+      display: block;
+      align-self: center;
+      max-width: 100%;
+      max-height: min(30dvh, 240px);
+      width: auto;
+      height: auto;
+      border-radius: 10px;
+      background: #000;
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, .12);
+    }
+    .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+    .field > span { font-size: .8rem; font-weight: 500; opacity: .75; }
+    .field input {
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border: 1.5px solid rgba(255, 255, 255, .18);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .06);
+      color: var(--white);
+      font: 400 1rem/1 "Google Sans", system-ui, sans-serif; /* 16px: no iOS zoom */
+    }
+    .field input::placeholder { color: rgba(255, 255, 255, .35); }
+    .field input:focus { outline: none; border-color: var(--white); }
+    .field-row { display: flex; gap: 12px; }
+    .logo-row { display: flex; align-items: center; gap: 12px; }
+    .logo-thumb {
+      width: 44px;
+      height: 44px;
+      object-fit: contain;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, .08);
+    }
+    .pill.ghost {
+      background: transparent;
+      color: var(--white);
+      box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .45);
+    }
+    .sheet-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 4px; }
+    .sheet-actions .spacer { flex: 1; }
+
+    /* Phones: the sheet slides up from the bottom edge */
+    @media (max-width: 560px) {
+      .sheet-backdrop { align-items: flex-end; padding: 0; }
+      .sheet {
+        width: 100%;
+        max-height: 92dvh;
+        border-radius: 22px 22px 0 0;
+        padding: 18px 16px max(16px, env(safe-area-inset-bottom));
+      }
+      .sheet-actions .pill.compact { height: 44px; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       .recording .pulse { animation: none; opacity: .5; }
       .upload.nudge { animation: none; }
@@ -500,6 +584,62 @@
     </div>
   </div>
 
+  <!-- Optional podcast details: filled in → podcast layout, left empty → plain export -->
+  <div class="sheet-backdrop" id="detailsSheet" hidden>
+    <form class="sheet" id="detailsForm" role="dialog" aria-modal="true" aria-labelledby="detailsTitle" tabindex="-1" autocomplete="off">
+      <div class="sheet-head">
+        <h2 id="detailsTitle">Video details</h2>
+        <p>Optional. Leave everything empty to export the animated video as usual.</p>
+      </div>
+      <canvas class="sheet-preview" id="detailsPreview" aria-label="Video preview"></canvas>
+      <label class="field">
+        <span>Headline / topic</span>
+        <input name="topic" maxlength="90" placeholder="Does AI replace human?" />
+      </label>
+      <div class="field-row">
+        <label class="field">
+          <span>Podcast or episode</span>
+          <input name="podcast" maxlength="48" placeholder="Tech Talk · Ep. 12" />
+        </label>
+        <label class="field">
+          <span>Podcaster name</span>
+          <input name="person" maxlength="48" placeholder="Sokha Chan" />
+        </label>
+      </div>
+      <div class="field-row">
+        <label class="field">
+          <span>City</span>
+          <input name="city" maxlength="32" placeholder="Phnom Penh" />
+        </label>
+        <label class="field">
+          <span>Country</span>
+          <input name="country" maxlength="32" placeholder="Cambodia" />
+        </label>
+      </div>
+      <div class="field">
+        <span>Podcaster logo</span>
+        <div class="logo-row">
+          <img class="logo-thumb" id="logoThumb" alt="" hidden />
+          <button class="pill compact ghost" id="logoPick" type="button">
+            <span class="icon" aria-hidden="true">upload</span>
+            <span id="logoPickText">Upload logo</span>
+          </button>
+          <button class="reset" id="logoClear" type="button" hidden>Remove</button>
+        </div>
+        <input type="file" id="logoInput" accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden />
+      </div>
+      <div class="sheet-actions">
+        <button class="reset" id="detailsClear" type="button">Clear all</button>
+        <span class="spacer"></span>
+        <button class="pill compact ghost" id="detailsCancel" type="button">Cancel</button>
+        <button class="pill compact" type="submit">
+          <span class="icon" aria-hidden="true">download</span>
+          Export MP4
+        </button>
+      </div>
+    </form>
+  </div>
+
   <script>
     "use strict";
 
@@ -523,7 +663,7 @@
     const pctEl = $("#pct");
 
     const MAX_SECONDS = 60;
-    const EXPORT_FPS = 30;
+    const EXPORT_FPS = 60;
     const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
     const clamp = (v, a = 0, b = 1) => Math.min(b, Math.max(a, v));
 
@@ -550,10 +690,40 @@
       { name: "Violet", shift: 90 },
       { name: "Sunset", shift: 170 },
       { name: "Forest", shift: -55 },
+      { name: "Magenta", shift: 142 }, // matches the podcast design's magenta rhythm
     ].map((p) => ({ name: p.name, colors: BLOBS.map((b) => hslToHex((b.h + p.shift + 360) % 360, b.s, b.l)) }));
 
     function setBlobColor(i, hex) {
       Object.assign(BLOBS[i], hexToHsl(hex));
+    }
+
+    // Rhythm colors follow the Color configuration: the top of the wave and the
+    // podcast band use "Glow", the bottom of the wave uses "Deep". Lightness is
+    // fixed per layer so any picked color still glows; greys/white stay grey.
+    const rgbOf = (h, s, l) => {
+      const n = parseInt(hslToHex(((h % 360) + 360) % 360, s, l).slice(1), 16);
+      return `${n >> 16}, ${(n >> 8) & 255}, ${n & 255}`;
+    };
+    let rhythmCache = null;
+    function rhythmPalette() {
+      const a = BLOBS[0], b = BLOBS[1];
+      const key = `${a.h},${a.s},${b.h},${b.s}`;
+      if (rhythmCache?.key === key) return rhythmCache;
+      const sat = (s, min) => (s < 10 ? s : Math.max(s, min));
+      const sa = sat(a.s, 75), sb = sat(b.s, 75);
+      rhythmCache = {
+        key,
+        upCore: `rgba(${rgbOf(a.h, sa, 88)}, 1)`,
+        upMid: `rgba(${rgbOf(a.h, sa, 62)}, 0.95)`,
+        upDeep: `rgba(${rgbOf(a.h - 12, sa, 48)}, 0.5)`,
+        upTip: `rgba(${rgbOf(a.h - 20, sa, 35)}, 0)`,
+        downCore: `rgba(${rgbOf(b.h, sb, 88)}, 1)`,
+        downMid: `rgba(${rgbOf(b.h, sb, 62)}, 0.65)`,
+        downEnd: `rgba(${rgbOf(b.h, sb, 45)}, 0)`,
+        glow: `rgba(${rgbOf(a.h, sa, 62)}, 0.8)`,
+        band: rgbOf(a.h, sat(a.s, 90), 54), // "r, g, b" for the podcast band
+      };
+      return rhythmCache;
     }
 
     // ---------- Color helpers (blobs store HSL; the panel edits hex) ----------
@@ -724,12 +894,12 @@
     let audioCtx = null;
     let analyser = null;
 
-    function makeAnalyser(ctx) {
+    function makeAnalyser(ctx, smoothing = 0.85) {
       const a = ctx.createAnalyser();
       a.fftSize = 2048;
       a.minDecibels = -90;
       a.maxDecibels = -20;
-      a.smoothingTimeConstant = 0.85;
+      a.smoothingTimeConstant = smoothing;
       return a;
     }
 
@@ -956,6 +1126,115 @@
       wmBtn.setAttribute("aria-pressed", String(watermark));
     });
 
+    // ---------- Video details (optional podcast layout) ----------
+    const detailsSheet = $("#detailsSheet");
+    const detailsForm = $("#detailsForm");
+    const detailsPreview = $("#detailsPreview");
+    const logoInput = $("#logoInput");
+    const DETAIL_FIELDS = ["topic", "podcast", "person", "city", "country"];
+    const details = { topic: "", podcast: "", person: "", city: "", country: "", logo: null, logoData: "" };
+    const hasDetails = () => DETAIL_FIELDS.some((k) => details[k]) || !!details.logo;
+
+    function saveDetails() {
+      const data = Object.fromEntries(DETAIL_FIELDS.map((k) => [k, details[k]]));
+      try {
+        localStorage.setItem("vm-details", JSON.stringify({ ...data, logoData: details.logoData }));
+      } catch {
+        try { localStorage.setItem("vm-details", JSON.stringify(data)); } catch {} // logo too big to keep
+      }
+    }
+
+    function setLogo(dataUrl) {
+      details.logo = null;
+      details.logoData = dataUrl || "";
+      $("#logoThumb").hidden = !dataUrl;
+      $("#logoClear").hidden = !dataUrl;
+      $("#logoPickText").textContent = dataUrl ? "Change logo" : "Upload logo";
+      if (!dataUrl) return;
+      const img = new Image();
+      img.onload = () => { if (details.logoData === dataUrl) details.logo = img; };
+      img.src = dataUrl;
+      $("#logoThumb").src = dataUrl;
+    }
+
+    DETAIL_FIELDS.forEach((k) => {
+      detailsForm.elements[k].addEventListener("input", (e) => {
+        details[k] = e.target.value.trim();
+        saveDetails();
+      });
+    });
+    $("#logoPick").addEventListener("click", () => logoInput.click());
+    logoInput.addEventListener("change", () => {
+      const file = logoInput.files[0];
+      logoInput.value = "";
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => { setLogo(reader.result); saveDetails(); };
+      reader.readAsDataURL(file);
+    });
+    $("#logoClear").addEventListener("click", () => { setLogo(""); saveDetails(); });
+    $("#detailsClear").addEventListener("click", () => {
+      DETAIL_FIELDS.forEach((k) => { details[k] = ""; detailsForm.elements[k].value = ""; });
+      setLogo("");
+      saveDetails();
+    });
+
+    try {
+      const saved = JSON.parse(localStorage.getItem("vm-details")) || {};
+      DETAIL_FIELDS.forEach((k) => {
+        if (typeof saved[k] === "string") details[k] = detailsForm.elements[k].value = saved[k];
+      });
+      if (typeof saved.logoData === "string" && saved.logoData.startsWith("data:image/")) setLogo(saved.logoData);
+    } catch {}
+
+    // Live preview in the sheet, animated with a made-up voice so the rhythm moves
+    const preview = { ctx: detailsPreview.getContext("2d"), vis: new Visual(), wave: null, tpl: null, freq: new Uint8Array(1024), t: 0 };
+    function renderDetailsPreview(dt) {
+      const p = preview;
+      p.t += dt;
+      for (let i = 0; i < p.freq.length; i++) {
+        const v = 230 * Math.exp(-i / 150) * (0.55 + 0.45 * Math.sin(i * 0.07 + p.t * 3.1)) * (0.6 + 0.4 * Math.sin(p.t * 2.3 + i * 0.013));
+        p.freq[i] = v;
+      }
+      const { width: w, height: h } = detailsPreview;
+      if (hasDetails()) {
+        drawTemplate(p.ctx, w, h, details, p.tpl, p.freq, dt, true, watermark);
+      } else {
+        p.vis.update(null, dt);
+        p.vis.draw(p.ctx, w, h);
+        drawWave(p.ctx, w, h, p.wave, p.freq, dt, true, 1);
+        if (watermark) drawWatermark(p.ctx, w, h);
+      }
+    }
+
+    let detailsReturnFocus = null;
+    function openDetails() {
+      if (!clip || state.exporting) return;
+      pause();
+      preview.wave ??= makeWave();
+      preview.tpl ??= makeTemplateState();
+      // preview at a third of the export size: sharp enough, cheap to draw
+      detailsPreview.width = Math.round(size.w / 3);
+      detailsPreview.height = Math.round(size.h / 3);
+      detailsReturnFocus = document.activeElement;
+      detailsSheet.hidden = false;
+      detailsForm.focus();
+    }
+    function closeDetails() {
+      detailsSheet.hidden = true;
+      detailsReturnFocus?.focus?.();
+    }
+    detailsForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      closeDetails();
+      exportVideo();
+    });
+    $("#detailsCancel").addEventListener("click", closeDetails);
+    detailsSheet.addEventListener("pointerdown", (e) => { if (e.target === detailsSheet) closeDetails(); });
+    detailsSheet.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.stopPropagation(); closeDetails(); }
+    });
+
     // ---------- Color configuration panel ----------
     const colorBtn = $("#colorBtn");
     const colorPanel = $("#colorPanel");
@@ -1052,7 +1331,7 @@
     ];
     const WEBM_TYPES = ["video/webm;codecs=vp9,opus", "video/webm;codecs=vp8,opus", "video/webm"];
 
-    let job = null; // the export currently rendering: { vis, an, canvas, ctx, w, h, watermark, wave, start, duration, share }
+    let job = null; // the export currently rendering: { vis, an, canvas, ctx, w, h, watermark, wave, info, tpl, start, duration, share }
 
     function drawWatermark(ctx, w, h) {
       const fontSize = Math.round(Math.min(w, h) * 0.034);
@@ -1068,9 +1347,13 @@
 
     function renderJobFrame(dt) {
       job.vis.update(job.an, dt);
-      job.vis.draw(job.ctx, job.w, job.h);
-      drawWave(job.ctx, job.w, job.h, job.wave, job.vis.freq, dt, job.start != null, 1);
-      if (job.watermark) drawWatermark(job.ctx, job.w, job.h);
+      if (job.info) {
+        drawTemplate(job.ctx, job.w, job.h, job.info, job.tpl, job.vis.freq, dt, job.start != null, job.watermark);
+      } else {
+        job.vis.draw(job.ctx, job.w, job.h);
+        drawWave(job.ctx, job.w, job.h, job.wave, job.vis.freq, dt, job.start != null, 1);
+        if (job.watermark) drawWatermark(job.ctx, job.w, job.h);
+      }
       if (job.start != null) {
         const p = (audioCtx.currentTime - job.start) / job.duration;
         setProgress(clamp(p) * job.share);
@@ -1092,6 +1375,10 @@
 
       const ctx = getAudio();
       await ctx.resume();
+      // podcast layout only when the user filled something in; otherwise the usual look
+      const info = hasDetails() ? { ...details } : null;
+      // wait for Google Sans so the text renders in the right font, but never block the export on it
+      if (info) await Promise.race([document.fonts.load(`400 64px ${TPL_FONT}`).catch(() => {}), new Promise((r) => setTimeout(r, 1500))]);
       const { w, h } = size;
       const canvas = document.createElement("canvas");
       canvas.width = w;
@@ -1101,7 +1388,7 @@
       const mime = mp4Type || pickType(WEBM_TYPES);
       const src = ctx.createBufferSource();
       src.buffer = clip.buffer;
-      const an = makeAnalyser(ctx);
+      const an = makeAnalyser(ctx, 0.6); // snappier than the on-screen analyser; the rhythm smooths it anyway
       const dest = ctx.createMediaStreamDestination();
       src.connect(an);
       src.connect(dest);
@@ -1115,6 +1402,8 @@
         h,
         watermark,
         wave: makeWave(),
+        info,
+        tpl: makeTemplateState(),
         start: null,
         duration: clip.buffer.duration,
         share: mp4Type ? 1 : 0.6, // leave room on the progress ring for MP4 conversion
@@ -1129,7 +1418,7 @@
         ]);
         const rec = new MediaRecorder(stream, {
           ...(mime ? { mimeType: mime } : {}),
-          videoBitsPerSecond: w * h >= 1920 * 1080 ? 14_000_000 : 10_000_000,
+          videoBitsPerSecond: w * h >= 1920 * 1080 ? 24_000_000 : 16_000_000, // sized for 60fps
           audioBitsPerSecond: 192_000,
         });
         const parts = [];
@@ -1244,7 +1533,7 @@
       }
     }
 
-    exportBtn.addEventListener("click", exportVideo);
+    exportBtn.addEventListener("click", openDetails);
 
     // =====================================================================
     // Audio-reactive ring around the mic button
@@ -1292,7 +1581,7 @@
       }
       // 3. smooth over time: rise quickly, fall slowly
       for (let j = 0; j < n; j++) {
-        vals[j] += (raw[j] - vals[j]) * (1 - Math.pow(raw[j] > vals[j] ? 0.55 : 0.9, dt * 60));
+        vals[j] += (raw[j] - vals[j]) * (1 - Math.pow(raw[j] > vals[j] ? 0.5 : 0.84, dt * 60));
       }
 
       const S = Math.min(h, w * 1.1) * scale;
@@ -1307,46 +1596,260 @@
       ctx.globalCompositeOperation = "lighter";
       ctx.lineCap = "butt";
       ctx.lineWidth = Math.max(1.5, gap * 0.5);
+      const pal = rhythmPalette();
+      // Lines are grouped by height so each group shares one gradient and one
+      // stroke: ~24 draw calls a frame instead of 640, which keeps exports smooth.
+      const B = 12;
+      const upPaths = [], downPaths = [];
+      for (let b = 0; b < B; b++) { upPaths.push(new Path2D()); downPaths.push(new Path2D()); }
       for (let j = 0; j < n; j++) {
         const x = (j + 0.5) * gap;
         const y0 = baseY(j);
-        const up = S * (0.02 + vals[j] * 0.4);
-        const down = S * (0.03 + vals[j] * 0.18);
-
-        const gu = ctx.createLinearGradient(0, y0, 0, y0 - up);
-        gu.addColorStop(0, "rgba(255, 200, 240, 1)");
-        gu.addColorStop(0.15, "rgba(255, 80, 170, 0.95)");
-        gu.addColorStop(0.55, "rgba(235, 30, 80, 0.5)");
-        gu.addColorStop(1, "rgba(170, 10, 40, 0)");
+        const v = Math.min(1, vals[j]);
+        const b = Math.min(B - 1, Math.floor(v * B));
+        upPaths[b].moveTo(x, y0);
+        upPaths[b].lineTo(x, y0 - S * (0.02 + v * 0.4));
+        downPaths[b].moveTo(x, y0);
+        downPaths[b].lineTo(x, y0 + S * (0.03 + v * 0.18));
+      }
+      for (let b = 0; b < B; b++) {
+        const v = (b + 0.5) / B; // the group's typical height
+        const y0 = cy - v * S * 0.03;
+        const gu = ctx.createLinearGradient(0, y0, 0, y0 - S * (0.02 + v * 0.4));
+        gu.addColorStop(0, pal.upCore);
+        gu.addColorStop(0.15, pal.upMid);
+        gu.addColorStop(0.55, pal.upDeep);
+        gu.addColorStop(1, pal.upTip);
         ctx.strokeStyle = gu;
-        ctx.beginPath();
-        ctx.moveTo(x, y0);
-        ctx.lineTo(x, y0 - up);
-        ctx.stroke();
+        ctx.stroke(upPaths[b]);
 
-        const gd = ctx.createLinearGradient(0, y0, 0, y0 + down);
-        gd.addColorStop(0, "rgba(200, 235, 255, 1)");
-        gd.addColorStop(0.3, "rgba(80, 160, 255, 0.65)");
-        gd.addColorStop(1, "rgba(30, 60, 200, 0)");
+        const gd = ctx.createLinearGradient(0, y0, 0, y0 + S * (0.03 + v * 0.18));
+        gd.addColorStop(0, pal.downCore);
+        gd.addColorStop(0.3, pal.downMid);
+        gd.addColorStop(1, pal.downEnd);
         ctx.strokeStyle = gd;
-        ctx.beginPath();
-        ctx.moveTo(x, y0);
-        ctx.lineTo(x, y0 + down);
-        ctx.stroke();
+        ctx.stroke(downPaths[b]);
       }
 
-      // glowing core along the baseline
-      ctx.beginPath();
+      // glowing core along the baseline: a few wide, faint strokes instead of
+      // shadowBlur, which is very slow on large canvases
+      const core = new Path2D();
       for (let j = 0; j < n; j++) {
         const x = (j + 0.5) * gap;
-        j ? ctx.lineTo(x, baseY(j)) : ctx.moveTo(x, baseY(j));
+        j ? core.lineTo(x, baseY(j)) : core.moveTo(x, baseY(j));
       }
       ctx.lineJoin = "round";
-      ctx.shadowColor = "rgba(255, 80, 170, 0.8)";
-      ctx.shadowBlur = S * 0.04;
-      ctx.lineWidth = S * 0.018;
-      ctx.strokeStyle = "rgba(255, 150, 210, 0.16)";
+      ctx.strokeStyle = pal.glow;
+      for (const [width, a] of [[0.07, 0.05], [0.04, 0.09], [0.018, 0.18]]) {
+        ctx.globalAlpha = alpha * a;
+        ctx.lineWidth = S * width;
+        ctx.stroke(core);
+      }
+      ctx.restore();
+    }
+
+    // =====================================================================
+    // Podcast layout, used for the export when video details are filled in.
+    // Black frame; podcast + host top-left, city + country top-right; a band of
+    // glowing magenta columns driven by the audio; a big headline; podcaster
+    // logo bottom-left and the VoiceMotion logo bottom-right. Positions are
+    // fractions of the frame, measured from the 1:1, 4:5, 9:16 and 16:9 designs.
+    // =====================================================================
+    const TPL_COLS = 24;
+    const TPL_FONT = '"Google Sans", system-ui, sans-serif';
+    const makeTemplateState = () => ({ cols: new Float32Array(TPL_COLS).fill(0.1), raw: new Float32Array(TPL_COLS), glow: null, pattern: null, head: null });
+
+    function templateLayout(w, h) {
+      const r = w / h;
+      if (r > 1.3) { // 16:9 — rhythm on the right, headline bottom-left
+        return { locX: 0.52 * w, band: [0.43 * w, 0.94 * w, 0.18 * h, 0.76 * h], head: { size: 0.105 * h, x: 0.03 * w, base: 0.78 * h, maxW: 0.55 * w }, footY: 0.925 * h };
+      }
+      if (r < 0.7) { // 9:16 — headline sits below the rhythm
+        return { locX: 0.53 * w, band: [0, w, 0.23 * h, 0.59 * h], head: { size: 0.105 * w, x: 0.037 * w, base: 0.76 * h, maxW: 0.9 * w }, footY: 0.94 * h };
+      }
+      if (r < 0.9) { // 4:5
+        return { locX: 0.73 * w, band: [0, w, 0.17 * h, 0.83 * h], head: { size: 0.1 * w, x: 0.083 * w, base: 0.77 * h, maxW: 0.84 * w }, footY: 0.93 * h };
+      }
+      // 1:1
+      return { locX: 0.58 * w, band: [0, w, 0.17 * h, 0.8 * h], head: { size: 0.098 * w, x: 0.059 * w, base: 0.785 * h, maxW: 0.88 * w }, footY: 0.92 * h };
+    }
+
+    function wrapLines(ctx, text, maxW) {
+      const lines = [];
+      let line = "";
+      for (const word of text.split(/\s+/).filter(Boolean)) {
+        const test = line ? line + " " + word : word;
+        if (line && ctx.measureText(test).width > maxW) { lines.push(line); line = word; }
+        else line = test;
+      }
+      if (line) lines.push(line);
+      return lines;
+    }
+    function ellipsize(ctx, text, maxW) {
+      if (ctx.measureText(text).width <= maxW) return text;
+      while (text && ctx.measureText(text + "…").width > maxW) text = text.slice(0, -1);
+      return text + "…";
+    }
+
+    // The VoiceMotion logo as an image for the canvas. The SVG only has a
+    // viewBox, so give it a size first or some browsers won't draw it.
+    const vmLogo = new Image();
+    fetch("white-voice-motion.svg")
+      .then((r) => r.text())
+      .then((svg) => {
+        const vb = svg.match(/viewBox="[\d.]+ [\d.]+ ([\d.]+) ([\d.]+)"/);
+        if (vb) svg = svg.replace("<svg ", `<svg width="${vb[1]}" height="${vb[2]}" `);
+        vmLogo.src = URL.createObjectURL(new Blob([svg], { type: "image/svg+xml" }));
+      })
+      .catch(() => {});
+
+    function drawTemplate(ctx, w, h, info, st, freq, dt, active, showWatermark) {
+      const L = templateLayout(w, h);
+      const u = Math.min(w, h);
+      const [bx0, bx1, by0, by1] = L.band;
+      const bw = bx1 - bx0, bh = by1 - by0, cy = (by0 + by1) / 2;
+      const colW = bw / TPL_COLS;
+      const band = rhythmPalette().band; // "r, g, b" from the Glow color
+
+      // column levels from the spectrum, mirrored so low (loud) frequencies sit in the middle
+      for (let j = 0; j < TPL_COLS; j++) {
+        const k = Math.abs((j / (TPL_COLS - 1)) * 2 - 1);
+        let v = 0;
+        if (active && freq) {
+          const bin = 2 + Math.floor(Math.pow(k, 1.4) * freq.length * 0.35);
+          v = clamp((freq[bin] / 255 - 0.1) / 0.75);
+        }
+        st.raw[j] = 0.1 + 0.9 * v * (0.45 + 0.55 * (1 - k * k));
+      }
+      // blend neighbours so the glow swells as one wide shape, like the design
+      for (let pass = 0; pass < 2; pass++) {
+        let prev = st.raw[0];
+        for (let j = 1; j < TPL_COLS - 1; j++) {
+          const cur = st.raw[j];
+          st.raw[j] = (prev + cur * 2 + st.raw[j + 1]) / 4;
+          prev = cur;
+        }
+      }
+      for (let j = 0; j < TPL_COLS; j++) {
+        const target = Math.min(1, st.raw[j] * 1.25);
+        st.cols[j] += (target - st.cols[j]) * (1 - Math.pow(target > st.cols[j] ? 0.45 : 0.8, dt * 60));
+      }
+
+      ctx.save();
+      ctx.fillStyle = "#060606";
+      ctx.fillRect(0, 0, w, h);
+
+      // --- rhythm band ---
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(bx0, by0, bw, bh);
+      ctx.clip();
+
+      // soft glow: one pixel per column in a tiny canvas, upscaled so it blurs
+      if (!st.glow) {
+        st.glow = document.createElement("canvas");
+        st.glow.width = TPL_COLS;
+        st.glow.height = 48;
+      }
+      const g = st.glow.getContext("2d");
+      g.clearRect(0, 0, TPL_COLS, 48);
+      for (let j = 0; j < TPL_COLS; j++) {
+        const lv = st.cols[j];
+        const hh = 24 * (0.3 + 0.7 * lv);
+        const grad = g.createLinearGradient(0, 24 - hh, 0, 24 + hh);
+        grad.addColorStop(0, `rgba(${band}, 0)`);
+        grad.addColorStop(0.5, `rgba(${band}, ${Math.min(1, 0.15 + 1.1 * lv)})`);
+        grad.addColorStop(1, `rgba(${band}, 0)`);
+        g.fillStyle = grad;
+        g.fillRect(j, 0, 1, 48);
+      }
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(st.glow, bx0 - colW / 2, by0, bw + colW, bh);
+
+      // crisp columns on top, so each stripe reads as its own step
+      for (let j = 0; j < TPL_COLS; j++) {
+        const lv = st.cols[j];
+        const hh = (bh / 2) * (0.25 + 0.75 * lv);
+        const grad = ctx.createLinearGradient(0, cy - hh, 0, cy + hh);
+        grad.addColorStop(0, `rgba(${band}, 0)`);
+        grad.addColorStop(0.5, `rgba(${band}, ${0.8 * lv})`);
+        grad.addColorStop(1, `rgba(${band}, 0)`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(bx0 + j * colW, cy - hh, colW, hh * 2);
+      }
+
+      // thin stripe lines between the columns
+      const lineGrad = ctx.createLinearGradient(0, by0, 0, by1);
+      lineGrad.addColorStop(0, `rgba(${band}, 0.16)`);
+      lineGrad.addColorStop(0.5, `rgba(${band}, 0.38)`);
+      lineGrad.addColorStop(1, `rgba(${band}, 0.16)`);
+      ctx.strokeStyle = lineGrad;
+      ctx.lineWidth = Math.max(1, u * 0.0024);
+      ctx.beginPath();
+      for (let j = 0; j <= TPL_COLS; j++) {
+        const x = bx0 + j * colW + colW / 2;
+        if (x >= bx1) break;
+        ctx.moveTo(x, by0);
+        ctx.lineTo(x, by1);
+      }
       ctx.stroke();
+
+      // moving film grain; "overlay" only textures the glow, so black stays black
+      if (!st.pattern) st.pattern = ctx.createPattern(grain, "repeat");
+      st.pattern.setTransform?.(new DOMMatrix().translate((Math.random() * 192) | 0, (Math.random() * 192) | 0));
+      ctx.globalCompositeOperation = "overlay";
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = st.pattern;
+      ctx.fillRect(bx0, by0, bw, bh);
+      ctx.restore();
+
+      // --- top text: podcast + host on the left, city + country on the right ---
+      const fs = u * 0.019;
+      const pad = u * 0.035;
+      ctx.font = `400 ${fs}px ${TPL_FONT}`;
+      ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+      ctx.textBaseline = "alphabetic";
+      const top = pad + fs;
+      const drawCol = (lines, x, maxW) => {
+        lines.filter(Boolean).forEach((t, i) => ctx.fillText(ellipsize(ctx, t, maxW), x, top + i * fs * 1.3));
+      };
+      drawCol([info.podcast, info.person], pad, L.locX - pad - u * 0.03);
+      drawCol([info.city, info.country], L.locX, w - L.locX - pad);
+
+      // --- headline, bottom-aligned so longer topics grow upward ---
+      if (info.topic) {
+        const key = `${info.topic}|${w}x${h}`;
+        if (!st.head || st.head.key !== key) {
+          let size = L.head.size, lines;
+          for (;;) {
+            ctx.font = `400 ${size}px ${TPL_FONT}`;
+            lines = wrapLines(ctx, info.topic, L.head.maxW);
+            const fits = lines.length <= 3 && lines.every((l) => ctx.measureText(l).width <= L.head.maxW);
+            if (fits || size < L.head.size * 0.45) break;
+            size *= 0.9;
+          }
+          st.head = { key, size, lines };
+        }
+        const { size, lines } = st.head;
+        ctx.font = `400 ${size}px ${TPL_FONT}`;
+        ctx.fillStyle = "#ffffff";
+        lines.forEach((l, i) => ctx.fillText(l, L.head.x, L.head.base - (lines.length - 1 - i) * size * 1.12));
+      }
+
+      // --- footer: podcaster logo left, VoiceMotion logo right ---
+      if (info.logo?.naturalWidth) {
+        const maxH = u * 0.065, maxW = u * 0.28;
+        const s = Math.min(maxH / info.logo.naturalHeight, maxW / info.logo.naturalWidth);
+        const lw = info.logo.naturalWidth * s, lh = info.logo.naturalHeight * s;
+        ctx.drawImage(info.logo, L.head.x, L.footY - lh / 2, lw, lh);
+      }
+      if (showWatermark && vmLogo.naturalWidth) {
+        const lh = u * 0.052;
+        const lw = lh * (vmLogo.naturalWidth / vmLogo.naturalHeight);
+        ctx.globalAlpha = 0.55;
+        ctx.drawImage(vmLogo, w - u * 0.06 - lw, L.footY - lh / 2, lw, lh);
+      }
       ctx.restore();
     }
 
@@ -1445,14 +1948,17 @@
 
     const liveWave = makeWave();
     let waveAlpha = 0;
-    let raf = null, last = 0;
+    let raf = null, last = 0, exportClock = 0, liveSkip = 0;
     function frame(now) {
       const dt = Math.min(0.1, (now - last) / 1000 || 0);
       last = now;
       const active = state.recording || state.playing;
       live.update(active ? analyser : null, dt);
-      live.draw(bgCtx, bg.width, bg.height);
-      syncThemeColor(dt);
+      // While exporting, the video gets the frame budget: the page background
+      // redraws every other frame and skips the colour sampling (a GPU readback
+      // that would cause periodic hitches in the recording).
+      if (!job || ++liveSkip % 2 === 0) live.draw(bgCtx, bg.width, bg.height);
+      if (!job) syncThemeColor(dt);
       // preview shows the same rhythm waveform the export will contain
       waveAlpha += ((state.playing ? 1 : 0) - waveAlpha) * (1 - Math.pow(0.9, dt * 60));
       // on screen the wave sits low, just below the Upload button, so it clears the mic
@@ -1463,7 +1969,15 @@
         drawWave(bgCtx, bg.width, bg.height, liveWave, live.freq, dt, state.playing, waveAlpha, { cy, scale: 0.55 });
       }
       drawRing(dt, active);
-      if (job) renderJobFrame(dt);
+      if (job) {
+        // draw export frames at EXPORT_FPS, even on 120 Hz screens
+        exportClock += dt;
+        if (exportClock >= 1 / EXPORT_FPS - 0.002) {
+          renderJobFrame(exportClock);
+          exportClock = 0;
+        }
+      }
+      if (!detailsSheet.hidden) renderDetailsPreview(dt);
       updateTimer();
       raf = requestAnimationFrame(frame);
     }
